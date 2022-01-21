@@ -1,0 +1,81 @@
+version: '3.7'
+
+services:
+  db:
+    image: postgres:12.0-alpine
+    container_name: 'github-scraper-db'
+    volumes:
+      - ./docker_volumes/postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=${SQL_USER}
+      - POSTGRES_PASSWORD=${SQL_PASSWORD}
+      - POSTGRES_DB=${SQL_DATABASE}
+
+    ports:
+      - "0.0.0.0:5432:5432"
+
+  redis:
+    image: redis:alpine
+    container_name: github-scraper-redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    container_name: 'github-scraper-backend'
+    volumes:
+      - $PWD/backend/:/usr/src/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+
+  celery:
+    restart: always
+    container_name: github-scraper-celery
+    build:
+      context: backend
+    command: celery -A backend worker -l INFO
+    volumes:
+      - $PWD/backend:/usr/src/app
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - DB_NAME=${SQL_DATABASE}
+      - DB_USER=${SQL_USER}
+      - DB_PASS=${SQL_PASSWORD}
+    depends_on:
+      - db
+      - redis
+      - backend
+
+  frontend:
+    container_name: github-scraper-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - $PWD/frontend:/usr/src/frontend
+      - /usr/src/frontend/node_modules
+    depends_on:
+      - backend
+
+  sockets:
+    container_name: github-scraper-sockets
+    build:
+      context: ./socket_server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - $PWD/socket_server:/usr/src/socket_server
+      - /usr/src/socket_server/node_modules
