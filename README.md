@@ -84,6 +84,8 @@ To get into the frontend you will be able to do it with http://0.0.0.0:8080/
 
 The frontend is a "Testing Dashboard" where users can cron queries, in seconds, to scrape GitHub's users.
 
+**Be sure you are created the .env file in the frontend folder. You could use .env_sample as a template.**
+
 ![ScreenShot](/DashboardTest.png)
 
 ### Cron Queries
